@@ -15,6 +15,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>WebMemX — Your memory of the web</title>
 <meta name="description" content="WebMemX is a privacy-first Chrome extension that locally tracks the unique pages you visit. No accounts, no servers, no tracking." />
+<link rel="icon" type="image/svg+xml" href="../icons/webmemx-icon.svg" />
+<link rel="icon" type="image/png" sizes="32x32" href="../icons/icon-32.png" />
+<link rel="icon" type="image/png" sizes="48x48" href="../icons/icon-48.png" />
+<link rel="apple-touch-icon" sizes="180x180" href="../icons/icon-180.png" />
 <style>
   :root {
     color-scheme: light dark;
@@ -162,12 +166,10 @@
     text-decoration: none;
   }
 
-  .wordmark .dot {
-    width: 9px;
-    height: 9px;
-    border-radius: 50%;
-    background: linear-gradient(135deg, var(--accent), var(--accent-2));
-    box-shadow: 0 0 0 4px var(--accent-soft);
+  .wordmark img {
+    width: 22px;
+    height: 22px;
+    display: block;
   }
 
   .nav-links {
@@ -785,7 +787,7 @@
 <nav>
   <div class="wrap">
     <a class="wordmark" href="#top">
-      <span class="dot"></span>
+      <img src="../icons/icon-48.png" width="22" height="22" alt="" />
       WebMemX
     </a>
     <div class="nav-links">

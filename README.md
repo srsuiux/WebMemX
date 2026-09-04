@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="icons/icon-128.png" width="96" height="96" alt="WebMemX icon" />
+</p>
+
 # WebMemX
 
 **Your memory of the web.** A privacy-first, local-only record of the unique pages you visit each day.

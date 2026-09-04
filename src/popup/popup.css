@@ -74,6 +74,17 @@ header {
   flex-shrink: 0;
 }
 
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+
+.brand-icon {
+  border-radius: 6px;
+  flex-shrink: 0;
+}
+
 h1 {
   margin: 0;
   font-size: 17px;
