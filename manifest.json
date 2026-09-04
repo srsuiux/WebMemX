@@ -1,0 +1,14 @@
+{
+  "manifest_version": 3,
+  "name": "WebMemX",
+  "version": "0.1.0",
+  "description": "Your memory of the web. A privacy-first, local-only record of the unique pages you visit each day.",
+  "action": {
+    "default_popup": "src/popup/popup.html"
+  },
+  "background": {
+    "service_worker": "src/background.js",
+    "type": "module"
+  },
+  "permissions": ["storage", "webNavigation", "history"]
+}
