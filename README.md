@@ -1,8 +1,8 @@
 # WebMemX
 
-**Your memory of the web.**
+**Your memory of the web.** A privacy-first, local-only record of the unique pages you visit each day.
 
-WebMemX is a privacy-first Chrome extension that quietly keeps a local record of the pages you visit — how many unique URLs today, which domains you spent time on, and how your browsing trends over the last week. Everything stays on your machine. No accounts, no servers, no analytics services, no data ever leaves your browser.
+WebMemX quietly keeps track of your browsing entirely on your device — which domains you spent time on, and how your activity trends over the last week. No accounts, no servers, no analytics services, no data that ever leaves your browser.
 
 Free to use, clone, modify, and redistribute — see [License](#license).
 
