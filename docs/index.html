@@ -1,0 +1,837 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>WebMemX — Your memory of the web</title>
+<meta name="description" content="WebMemX is a privacy-first Chrome extension that locally tracks the unique pages you visit. No accounts, no servers, no tracking." />
+<style>
+  :root {
+    color-scheme: light dark;
+    --bg: #f7f8fa;
+    --bg-raised: #ffffff;
+    --fg: #14161b;
+    --muted: #62697b;
+    --accent: #2563eb;
+    --accent-soft: rgba(37, 99, 235, 0.1);
+    --border: #e7e9ee;
+    --code-bg: #101217;
+    --code-fg: #e6e8ec;
+    --shadow: 0 1px 2px rgba(16, 24, 40, 0.04), 0 12px 32px rgba(16, 24, 40, 0.06);
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #0a0c10;
+      --bg-raised: #14161c;
+      --fg: #f3f4f6;
+      --muted: #929aab;
+      --accent: #6ea8fe;
+      --accent-soft: rgba(110, 168, 254, 0.14);
+      --border: #24272f;
+      --code-bg: #05060a;
+      --code-fg: #e6e8ec;
+      --shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 12px 32px rgba(0, 0, 0, 0.35);
+    }
+  }
+
+  :root[data-theme="dark"] {
+    --bg: #0a0c10;
+    --bg-raised: #14161c;
+    --fg: #f3f4f6;
+    --muted: #929aab;
+    --accent: #6ea8fe;
+    --accent-soft: rgba(110, 168, 254, 0.14);
+    --border: #24272f;
+    --code-bg: #05060a;
+    --code-fg: #e6e8ec;
+    --shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 12px 32px rgba(0, 0, 0, 0.35);
+  }
+
+  :root[data-theme="light"] {
+    --bg: #f7f8fa;
+    --bg-raised: #ffffff;
+    --fg: #14161b;
+    --muted: #62697b;
+    --accent: #2563eb;
+    --accent-soft: rgba(37, 99, 235, 0.1);
+    --border: #e7e9ee;
+    --code-bg: #101217;
+    --code-fg: #e6e8ec;
+    --shadow: 0 1px 2px rgba(16, 24, 40, 0.04), 0 12px 32px rgba(16, 24, 40, 0.06);
+  }
+
+  * { box-sizing: border-box; }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--fg);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  a { color: inherit; }
+
+  .wrap {
+    max-width: 1040px;
+    margin: 0 auto;
+    padding: 0 24px;
+  }
+
+  /* ---- nav ---- */
+  nav {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    background: color-mix(in srgb, var(--bg) 88%, transparent);
+    backdrop-filter: blur(10px);
+    border-bottom: 1px solid var(--border);
+  }
+
+  nav .wrap {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: 60px;
+  }
+
+  .wordmark {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 800;
+    font-size: 16px;
+    letter-spacing: -0.01em;
+    text-decoration: none;
+  }
+
+  .wordmark .dot {
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+    background: var(--accent);
+    box-shadow: 0 0 0 4px var(--accent-soft);
+  }
+
+  .nav-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .icon-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 34px;
+    height: 34px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: var(--bg-raised);
+    color: var(--muted);
+    cursor: pointer;
+    text-decoration: none;
+    transition: color 0.15s ease, border-color 0.15s ease, transform 0.15s ease;
+  }
+
+  .icon-btn:hover { color: var(--fg); border-color: var(--accent); }
+  .icon-btn:active { transform: scale(0.94); }
+  .icon-btn svg { width: 16px; height: 16px; }
+
+  /* ---- hero ---- */
+  header.hero {
+    padding: 76px 0 56px;
+  }
+
+  .hero-grid {
+    display: grid;
+    grid-template-columns: 1.05fr 0.95fr;
+    gap: 48px;
+    align-items: center;
+  }
+
+  .eyebrow {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11.5px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--accent);
+    background: var(--accent-soft);
+    padding: 5px 10px;
+    border-radius: 999px;
+    margin-bottom: 18px;
+  }
+
+  h1 {
+    margin: 0 0 16px;
+    font-size: clamp(34px, 5vw, 50px);
+    line-height: 1.06;
+    letter-spacing: -0.025em;
+    font-weight: 800;
+  }
+
+  h1 span { color: var(--accent); }
+
+  .lede {
+    margin: 0 0 28px;
+    font-size: 17px;
+    line-height: 1.6;
+    color: var(--muted);
+    max-width: 46ch;
+  }
+
+  .cta-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-bottom: 22px;
+  }
+
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 11px 18px;
+    border-radius: 9px;
+    font-size: 14px;
+    font-weight: 700;
+    text-decoration: none;
+    border: 1px solid transparent;
+    cursor: pointer;
+    transition: transform 0.15s ease, opacity 0.15s ease;
+  }
+
+  .btn:active { transform: scale(0.97); }
+
+  .btn-primary {
+    background: var(--fg);
+    color: var(--bg);
+  }
+
+  .btn-primary:hover { opacity: 0.88; }
+
+  .btn-ghost {
+    background: var(--bg-raised);
+    color: var(--fg);
+    border-color: var(--border);
+  }
+
+  .btn-ghost:hover { border-color: var(--accent); }
+
+  .clone-box {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    background: var(--code-bg);
+    color: var(--code-fg);
+    border-radius: 9px;
+    padding: 11px 12px 11px 16px;
+    font-size: 12.5px;
+    max-width: 100%;
+  }
+
+  .clone-box code {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    white-space: nowrap;
+    overflow-x: auto;
+  }
+
+  .clone-box button {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 26px;
+    height: 26px;
+    border-radius: 6px;
+    border: 1px solid #2a2d36;
+    background: transparent;
+    color: var(--code-fg);
+    cursor: pointer;
+  }
+
+  .clone-box button:hover { background: #1c1e26; }
+  .clone-box svg { width: 13px; height: 13px; }
+
+  .badges {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    font-size: 11.5px;
+    color: var(--muted);
+  }
+
+  .badge {
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    padding: 4px 10px;
+    background: var(--bg-raised);
+  }
+
+  /* ---- mock popup preview ---- */
+  .preview-shell {
+    position: relative;
+    display: flex;
+    justify-content: center;
+  }
+
+  .preview-tag {
+    position: absolute;
+    top: -12px;
+    right: 18px;
+    background: var(--accent);
+    color: #fff;
+    font-size: 10.5px;
+    font-weight: 800;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    padding: 4px 9px;
+    border-radius: 999px;
+    z-index: 2;
+  }
+
+  .mock {
+    width: 320px;
+    background: var(--bg-raised);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    box-shadow: var(--shadow);
+    padding: 18px 18px 20px;
+  }
+
+  .mock-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 14px;
+  }
+
+  .mock-header .title { font-weight: 800; font-size: 14px; }
+  .mock-header .sub { font-size: 10.5px; color: var(--muted); margin-top: 2px; }
+
+  .mock-dot-row { display: flex; gap: 6px; }
+  .mock-dot-row span {
+    width: 22px; height: 22px; border-radius: 7px;
+    border: 1px solid var(--border);
+  }
+
+  .mock-hero {
+    display: flex;
+    justify-content: center;
+    gap: 22px;
+    padding: 6px 0 12px;
+  }
+
+  .mock-stat { text-align: center; }
+  .mock-stat b { display: block; font-size: 30px; color: var(--accent); line-height: 1; }
+  .mock-stat small { font-size: 9.5px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; }
+
+  .mock-panel {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 11px;
+    padding: 10px 12px 12px;
+    margin-top: 10px;
+  }
+
+  .mock-panel h4 {
+    margin: 0 0 8px;
+    font-size: 9px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--muted);
+    font-weight: 800;
+  }
+
+  .mock-trend {
+    display: flex;
+    align-items: flex-end;
+    gap: 5px;
+    height: 40px;
+  }
+
+  .mock-trend i {
+    flex: 1;
+    display: block;
+    background: var(--border);
+    border-radius: 3px;
+  }
+
+  .mock-trend i.on { background: var(--accent); }
+
+  .mock-domain {
+    display: grid;
+    grid-template-columns: 62px 1fr 18px;
+    align-items: center;
+    gap: 8px;
+    font-size: 10.5px;
+    margin-bottom: 6px;
+  }
+
+  .mock-domain .track {
+    height: 5px;
+    border-radius: 3px;
+    background: var(--border);
+    overflow: hidden;
+  }
+
+  .mock-domain .fill { height: 100%; background: var(--accent); border-radius: 3px; }
+  .mock-domain b { text-align: right; color: var(--muted); font-weight: 600; }
+
+  /* ---- sections ---- */
+  section { padding: 56px 0; }
+
+  .section-head {
+    max-width: 56ch;
+    margin: 0 0 34px;
+  }
+
+  .section-head .eyebrow { margin-bottom: 12px; }
+
+  h2 {
+    margin: 0 0 10px;
+    font-size: clamp(24px, 3vw, 30px);
+    letter-spacing: -0.02em;
+  }
+
+  .section-head p {
+    margin: 0;
+    color: var(--muted);
+    font-size: 15px;
+    line-height: 1.6;
+  }
+
+  .grid-cards {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+  }
+
+  .card {
+    background: var(--bg-raised);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 20px;
+  }
+
+  .card .ic {
+    width: 34px;
+    height: 34px;
+    border-radius: 9px;
+    background: var(--accent-soft);
+    color: var(--accent);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 14px;
+  }
+
+  .card .ic svg { width: 17px; height: 17px; }
+
+  .card h3 {
+    margin: 0 0 6px;
+    font-size: 15px;
+    letter-spacing: -0.01em;
+  }
+
+  .card p {
+    margin: 0;
+    font-size: 13.5px;
+    line-height: 1.55;
+    color: var(--muted);
+  }
+
+  /* ---- how it works ---- */
+  .steps {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+  }
+
+  .step {
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 18px;
+    background: var(--bg-raised);
+  }
+
+  .step .n {
+    font-size: 11px;
+    font-weight: 800;
+    color: var(--accent);
+    margin-bottom: 8px;
+  }
+
+  .step h3 { margin: 0 0 6px; font-size: 14px; }
+  .step p { margin: 0; font-size: 12.5px; color: var(--muted); line-height: 1.5; }
+
+  /* ---- install ---- */
+  .install-panel {
+    background: var(--bg-raised);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 26px 28px;
+    display: grid;
+    grid-template-columns: 1.1fr 0.9fr;
+    gap: 28px;
+    align-items: center;
+  }
+
+  ol.install-steps {
+    margin: 0;
+    padding-left: 20px;
+    font-size: 14px;
+    line-height: 2;
+    color: var(--fg);
+  }
+
+  ol.install-steps b { color: var(--fg); }
+
+  .terminal {
+    background: var(--code-bg);
+    color: var(--code-fg);
+    border-radius: 12px;
+    padding: 16px 18px;
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 12.5px;
+    line-height: 1.9;
+  }
+
+  .terminal .l { display: block; }
+  .terminal .p { color: #6ea8fe; }
+  .terminal .c { color: #7dd3a8; }
+
+  /* ---- permissions ---- */
+  table.perm {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13.5px;
+  }
+
+  table.perm th, table.perm td {
+    text-align: left;
+    padding: 11px 14px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  table.perm th {
+    color: var(--muted);
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    font-weight: 700;
+  }
+
+  table.perm code {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    background: var(--accent-soft);
+    color: var(--accent);
+    padding: 2px 6px;
+    border-radius: 5px;
+    font-size: 12px;
+  }
+
+  /* ---- footer ---- */
+  footer {
+    border-top: 1px solid var(--border);
+    padding: 30px 0 40px;
+  }
+
+  footer .wrap {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+
+  footer p { margin: 0; font-size: 12.5px; color: var(--muted); }
+  footer a { text-decoration: none; color: var(--muted); }
+  footer a:hover { color: var(--fg); }
+  footer .foot-links { display: flex; gap: 18px; font-size: 12.5px; }
+
+  @media (max-width: 860px) {
+    .hero-grid { grid-template-columns: 1fr; }
+    .preview-shell { order: -1; }
+    .grid-cards { grid-template-columns: repeat(2, 1fr); }
+    .steps { grid-template-columns: repeat(2, 1fr); }
+    .install-panel { grid-template-columns: 1fr; }
+  }
+
+  @media (max-width: 540px) {
+    .grid-cards { grid-template-columns: 1fr; }
+    .steps { grid-template-columns: 1fr; }
+    .mock { width: 100%; }
+  }
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="wrap">
+    <a class="wordmark" href="#top">
+      <span class="dot"></span>
+      WebMemX
+    </a>
+    <div class="nav-actions">
+      <button class="icon-btn" id="theme-btn" type="button" aria-label="Toggle theme" title="Theme: Auto">
+        <span id="theme-icon"></span>
+      </button>
+      <a class="icon-btn" href="https://github.com/srsuiux/WebMemX" target="_blank" rel="noopener" aria-label="View on GitHub">
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 .5C5.73.5.5 5.73.5 12c0 5.09 3.29 9.4 7.86 10.93.58.1.79-.25.79-.56 0-.28-.01-1.02-.02-2-3.2.7-3.88-1.54-3.88-1.54-.52-1.34-1.28-1.7-1.28-1.7-1.04-.72.08-.7.08-.7 1.15.08 1.76 1.19 1.76 1.19 1.03 1.76 2.7 1.25 3.36.96.1-.75.4-1.25.73-1.54-2.55-.29-5.23-1.28-5.23-5.69 0-1.26.45-2.28 1.19-3.09-.12-.29-.52-1.46.11-3.05 0 0 .97-.31 3.18 1.18a11 11 0 0 1 5.79 0c2.2-1.49 3.17-1.18 3.17-1.18.64 1.59.24 2.76.12 3.05.74.81 1.18 1.83 1.18 3.09 0 4.42-2.69 5.4-5.25 5.68.41.36.78 1.08.78 2.17 0 1.57-.01 2.83-.01 3.22 0 .31.21.67.8.56A10.52 10.52 0 0 0 23.5 12C23.5 5.73 18.27.5 12 .5z"/></svg>
+      </a>
+    </div>
+  </div>
+</nav>
+
+<div id="top"></div>
+
+<header class="hero">
+  <div class="wrap hero-grid">
+    <div>
+      <span class="eyebrow">Chrome Extension · Manifest V3</span>
+      <h1>Your memory<br />of the <span>web.</span></h1>
+      <p class="lede">
+        WebMemX quietly tracks the unique pages you visit each day — entirely on your
+        device. No accounts, no servers, no analytics, no data that ever leaves your browser.
+      </p>
+      <div class="cta-row">
+        <a class="btn btn-primary" href="https://github.com/srsuiux/WebMemX" target="_blank" rel="noopener">
+          View on GitHub
+        </a>
+        <a class="btn btn-ghost" href="#install">Install guide</a>
+      </div>
+      <div class="clone-box">
+        <code>git clone https://github.com/srsuiux/WebMemX.git</code>
+        <button type="button" id="copy-btn" aria-label="Copy clone command" title="Copy">
+          <svg id="copy-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"></rect><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"></path></svg>
+        </button>
+      </div>
+      <div class="badges" style="margin-top:16px;">
+        <span class="badge">MIT Licensed</span>
+        <span class="badge">Zero dependencies</span>
+        <span class="badge">Local-first</span>
+      </div>
+    </div>
+
+    <div class="preview-shell">
+      <span class="preview-tag">Preview</span>
+      <div class="mock">
+        <div class="mock-header">
+          <div>
+            <div class="title">WebMemX</div>
+            <div class="sub">Your memory of the web</div>
+          </div>
+          <div class="mock-dot-row"><span></span><span></span></div>
+        </div>
+        <div class="mock-hero">
+          <div class="mock-stat"><b>42</b><small>Unique URLs</small></div>
+          <div class="mock-stat"><b>9</b><small>Domains</small></div>
+        </div>
+        <div class="mock-panel">
+          <h4>Last 7 Days</h4>
+          <div class="mock-trend">
+            <i style="height:35%"></i>
+            <i style="height:55%"></i>
+            <i style="height:40%"></i>
+            <i style="height:70%"></i>
+            <i style="height:50%"></i>
+            <i style="height:60%"></i>
+            <i class="on" style="height:100%"></i>
+          </div>
+        </div>
+        <div class="mock-panel">
+          <h4>Top Domains</h4>
+          <div class="mock-domain"><span>github.com</span><div class="track"><div class="fill" style="width:90%"></div></div><b>14</b></div>
+          <div class="mock-domain"><span>google.com</span><div class="track"><div class="fill" style="width:60%"></div></div><b>9</b></div>
+          <div class="mock-domain"><span>youtube.com</span><div class="track"><div class="fill" style="width:35%"></div></div><b>5</b></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</header>
+
+<section id="features">
+  <div class="wrap">
+    <div class="section-head">
+      <span class="eyebrow">Features</span>
+      <h2>Small, reliable, and actually private</h2>
+      <p>Everything WebMemX does happens locally in your browser — nothing here talks to a server.</p>
+    </div>
+    <div class="grid-cards">
+      <div class="card">
+        <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg></div>
+        <h3>Local-first privacy</h3>
+        <p>Everything lives in <code>chrome.storage.local</code>. No backend, no cloud database, no accounts, no analytics services.</p>
+      </div>
+      <div class="card">
+        <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg></div>
+        <h3>Unique URL tracking</h3>
+        <p>Smart normalization dedupes same-day visits without blindly stripping query parameters that identify distinct pages.</p>
+      </div>
+      <div class="card">
+        <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg></div>
+        <h3>History rescan</h3>
+        <p>Backfills missed activity straight from Chrome's own history, with an incremental cache so repeat scans are fast.</p>
+      </div>
+      <div class="card">
+        <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg></div>
+        <h3>Domain analytics</h3>
+        <p>Today's unique URLs rolled up by origin, so you can see which sites your browsing actually came from.</p>
+      </div>
+      <div class="card">
+        <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9"></rect><rect x="14" y="3" width="7" height="5"></rect><rect x="14" y="12" width="7" height="9"></rect><rect x="3" y="16" width="7" height="5"></rect></svg></div>
+        <h3>Dashboard popup</h3>
+        <p>Stat counts, a 7-day trend chart, top domains, and today's activity — all in one clean popup.</p>
+      </div>
+      <div class="card">
+        <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"></path></svg></div>
+        <h3>Light / dark / auto</h3>
+        <p>Follows your OS by default, or pin a theme explicitly — same toggle pattern used across the extension.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="how">
+  <div class="wrap">
+    <div class="section-head">
+      <span class="eyebrow">How it works</span>
+      <h2>From navigation to dashboard</h2>
+      <p>A minimal, event-driven pipeline — no polling, no continuously running scripts.</p>
+    </div>
+    <div class="steps">
+      <div class="step">
+        <div class="n">01</div>
+        <h3>Navigate</h3>
+        <p><code>chrome.webNavigation</code> detects a real page load in the main frame.</p>
+      </div>
+      <div class="step">
+        <div class="n">02</div>
+        <h3>Normalize</h3>
+        <p>Scheme/host lowercased, fragment dropped, trailing slash trimmed. Query params kept.</p>
+      </div>
+      <div class="step">
+        <div class="n">03</div>
+        <h3>Dedupe per day</h3>
+        <p>Each normalized URL counts once per local calendar day, stored independently.</p>
+      </div>
+      <div class="step">
+        <div class="n">04</div>
+        <h3>Display</h3>
+        <p>The popup renders live stats, trend, and domain breakdown straight from local storage.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="install">
+  <div class="wrap">
+    <div class="section-head">
+      <span class="eyebrow">Get started</span>
+      <h2>Install as an unpacked extension</h2>
+      <p>Not on the Chrome Web Store yet — loading it takes about a minute.</p>
+    </div>
+    <div class="install-panel">
+      <ol class="install-steps">
+        <li>Clone the repo</li>
+        <li>Open <b>chrome://extensions</b></li>
+        <li>Enable <b>Developer mode</b></li>
+        <li>Click <b>Load unpacked</b>, select the folder</li>
+        <li>Open the toolbar icon — today backfills automatically</li>
+      </ol>
+      <div class="terminal">
+        <span class="l"><span class="p">$</span> git clone <span class="c">https://github.com/srsuiux/WebMemX.git</span></span>
+        <span class="l"><span class="p">$</span> cd WebMemX</span>
+        <span class="l"><span class="p">#</span> load unpacked in chrome://extensions</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="permissions">
+  <div class="wrap">
+    <div class="section-head">
+      <span class="eyebrow">Trust</span>
+      <h2>Only the permissions it needs</h2>
+      <p>No host permissions — WebMemX never reads page content, only navigation URLs.</p>
+    </div>
+    <table class="perm">
+      <thead><tr><th>Permission</th><th>Why</th></tr></thead>
+      <tbody>
+        <tr><td><code>storage</code></td><td>Persist daily activity locally in <code>chrome.storage.local</code>.</td></tr>
+        <tr><td><code>webNavigation</code></td><td>Detect page navigations as they happen.</td></tr>
+        <tr><td><code>history</code></td><td>Rescan and backfill activity from your existing browser history.</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <p>MIT Licensed — free to use, clone, modify, and distribute.</p>
+    <div class="foot-links">
+      <a href="https://github.com/srsuiux/WebMemX" target="_blank" rel="noopener">GitHub</a>
+      <a href="https://github.com/srsuiux/WebMemX/blob/main/README.md" target="_blank" rel="noopener">README</a>
+      <a href="https://github.com/srsuiux/WebMemX/blob/main/LICENSE" target="_blank" rel="noopener">License</a>
+    </div>
+  </div>
+</footer>
+
+<script>
+  var THEME_KEY = "webmemx-docs-theme";
+  var ORDER = ["auto", "light", "dark"];
+  var ICONS = {
+    auto: '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"></circle><path d="M12 3a9 9 0 000 18z" fill="currentColor" stroke="none"></path></svg>',
+    light: '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>',
+    dark: '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"></path></svg>'
+  };
+  var LABELS = { auto: "Auto", light: "Light", dark: "Dark" };
+
+  function applyTheme(pref) {
+    if (pref === "auto") {
+      document.documentElement.removeAttribute("data-theme");
+    } else {
+      document.documentElement.setAttribute("data-theme", pref);
+    }
+    document.getElementById("theme-icon").innerHTML = ICONS[pref];
+    document.getElementById("theme-btn").title = "Theme: " + LABELS[pref];
+  }
+
+  (function initTheme() {
+    var stored = null;
+    try { stored = localStorage.getItem(THEME_KEY); } catch (e) {}
+    applyTheme(ORDER.indexOf(stored) > -1 ? stored : "auto");
+  })();
+
+  document.getElementById("theme-btn").addEventListener("click", function () {
+    var current = document.documentElement.getAttribute("data-theme") || "auto";
+    var next = ORDER[(ORDER.indexOf(current) + 1) % ORDER.length];
+    applyTheme(next);
+    try { localStorage.setItem(THEME_KEY, next); } catch (e) {}
+  });
+
+  document.getElementById("copy-btn").addEventListener("click", function () {
+    var text = "git clone https://github.com/srsuiux/WebMemX.git";
+    var icon = document.getElementById("copy-icon");
+    var reset = function () {
+      icon.innerHTML = '<rect x="9" y="9" width="13" height="13" rx="2"></rect><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"></path>';
+    };
+    var showCheck = function () {
+      icon.innerHTML = '<polyline points="20 6 9 17 4 12"></polyline>';
+      setTimeout(reset, 1400);
+    };
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(showCheck).catch(function () {});
+    }
+  });
+</script>
+
+</body>
+</html>
