@@ -3,9 +3,17 @@ import { rescanHistory } from "../rescan.js";
 import { computeDomainStats } from "../analytics.js";
 
 const TREND_DAYS = 7;
-const TOP_DOMAINS = 6;
 const THEME_KEY = "themePref";
 const THEME_ORDER = ["auto", "light", "dark"];
+
+const OPEN_ICON =
+  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>';
+const COPY_ICON =
+  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"></rect><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"></path></svg>';
+const CHECK_ICON =
+  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>';
+
+let todayUrlsCache = [];
 
 const THEME_ICONS = {
   auto: '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"></circle><path d="M12 3a9 9 0 000 18z" fill="currentColor" stroke="none"></path></svg>',
@@ -92,7 +100,7 @@ function renderDomains(urls) {
   const container = document.getElementById("domain-list");
   container.innerHTML = "";
 
-  const stats = computeDomainStats(urls).slice(0, TOP_DOMAINS);
+  const stats = computeDomainStats(urls);
 
   if (stats.length === 0) {
     const empty = document.createElement("p");
@@ -129,12 +137,71 @@ function renderDomains(urls) {
   }
 }
 
-function renderTodayUrls(urls) {
+function buildUrlRow(url) {
+  const li = document.createElement("li");
+  li.className = "url-row";
+  li.title = url;
+  li.addEventListener("click", () => chrome.tabs.create({ url }));
+
+  const text = document.createElement("span");
+  text.className = "url-text";
+  text.textContent = url;
+
+  const actions = document.createElement("span");
+  actions.className = "url-actions";
+
+  const openBtn = document.createElement("button");
+  openBtn.type = "button";
+  openBtn.className = "url-action-btn";
+  openBtn.title = "Open in new tab";
+  openBtn.setAttribute("aria-label", "Open in new tab");
+  openBtn.innerHTML = OPEN_ICON;
+  openBtn.addEventListener("click", (e) => {
+    e.stopPropagation();
+    chrome.tabs.create({ url });
+  });
+
+  const copyBtn = document.createElement("button");
+  copyBtn.type = "button";
+  copyBtn.className = "url-action-btn";
+  copyBtn.title = "Copy link";
+  copyBtn.setAttribute("aria-label", "Copy link");
+  copyBtn.innerHTML = COPY_ICON;
+  copyBtn.addEventListener("click", (e) => {
+    e.stopPropagation();
+    navigator.clipboard
+      .writeText(url)
+      .then(() => {
+        copyBtn.innerHTML = CHECK_ICON;
+        setTimeout(() => {
+          copyBtn.innerHTML = COPY_ICON;
+        }, 1200);
+      })
+      .catch((err) => console.error("WebMemX: copy failed", err));
+  });
+
+  actions.append(openBtn, copyBtn);
+  li.append(text, actions);
+  return li;
+}
+
+function renderTodayUrls(allUrls, query = "") {
   const list = document.getElementById("url-list");
   const emptyState = document.getElementById("empty-state");
   list.innerHTML = "";
 
-  if (urls.length === 0) {
+  if (allUrls.length === 0) {
+    emptyState.innerHTML = "No web activity recorded yet.<br />Start browsing and WebMemX will remember it for you.";
+    emptyState.hidden = false;
+    list.hidden = true;
+    return;
+  }
+
+  const q = query.trim().toLowerCase();
+  const filtered = q ? allUrls.filter(({ url }) => url.toLowerCase().includes(q)) : allUrls;
+
+  if (filtered.length === 0) {
+    emptyState.textContent = `No matches for "${q}".`;
     emptyState.hidden = false;
     list.hidden = true;
     return;
@@ -143,11 +210,8 @@ function renderTodayUrls(urls) {
   emptyState.hidden = true;
   list.hidden = false;
 
-  for (const { url } of [...urls].sort((a, b) => b.time - a.time)) {
-    const li = document.createElement("li");
-    li.textContent = url;
-    li.title = url;
-    list.appendChild(li);
+  for (const { url } of [...filtered].sort((a, b) => b.time - a.time)) {
+    list.appendChild(buildUrlRow(url));
   }
 }
 
@@ -166,7 +230,16 @@ async function render() {
 
   renderTrend(days, todayKey);
   renderDomains(urls);
-  renderTodayUrls(urls);
+
+  todayUrlsCache = urls;
+  const searchInput = document.getElementById("activity-search");
+  renderTodayUrls(todayUrlsCache, searchInput.value);
+}
+
+function setupSearch() {
+  document.getElementById("activity-search").addEventListener("input", (e) => {
+    renderTodayUrls(todayUrlsCache, e.target.value);
+  });
 }
 
 // ---------- rescan ----------
@@ -202,4 +275,5 @@ function setupRescanButton() {
 initTheme();
 setupThemeButton();
 setupRescanButton();
+setupSearch();
 render();

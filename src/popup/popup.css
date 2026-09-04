@@ -265,6 +265,9 @@ h2 {
   display: flex;
   flex-direction: column;
   gap: 8px;
+  max-height: 200px;
+  overflow-y: auto;
+  padding-right: 2px;
 }
 
 .domain-row {
@@ -308,6 +311,28 @@ h2 {
   padding: 8px 0 4px;
 }
 
+/* Search */
+.search-input {
+  width: 100%;
+  font: inherit;
+  font-size: 12px;
+  padding: 7px 10px;
+  margin-bottom: 8px;
+  border-radius: 7px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--fg);
+}
+
+.search-input::placeholder {
+  color: var(--muted);
+}
+
+.search-input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
 /* URL list */
 .url-list {
   list-style: none;
@@ -317,17 +342,63 @@ h2 {
   overflow-y: auto;
 }
 
-.url-list li {
-  font-size: 12px;
-  padding: 6px 8px;
+.url-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 4px 5px 8px;
   border-radius: 6px;
+  cursor: pointer;
+}
+
+.url-row:hover {
+  background: var(--hover);
+}
+
+.url-text {
+  flex: 1;
+  min-width: 0;
+  font-size: 12px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
-.url-list li:hover {
-  background: var(--hover);
+.url-actions {
+  display: flex;
+  gap: 2px;
+  flex-shrink: 0;
+  opacity: 0;
+  transition: opacity 0.12s ease;
+}
+
+.url-row:hover .url-actions,
+.url-row:focus-within .url-actions {
+  opacity: 1;
+}
+
+.url-action-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 21px;
+  height: 21px;
+  padding: 0;
+  border: none;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.url-action-btn:hover {
+  background: var(--border);
+  color: var(--fg);
+}
+
+.url-action-btn svg {
+  width: 11px;
+  height: 11px;
 }
 
 .empty-state {
